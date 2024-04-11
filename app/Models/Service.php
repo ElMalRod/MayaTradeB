@@ -7,8 +7,15 @@ use Illuminate\Database\Eloquent\Model;
 
 class Service extends Model
 {
+    use HasFactory;
+
     protected $fillable = [
-        'user_id', 'name', 'description', 'price',
+        'user_id', 
+        'name', 
+        'description', 
+        'price',
+        'reported', 
+        'report_reason'
     ];
 
     // Relationships
@@ -17,4 +24,3 @@ class Service extends Model
         return $this->belongsTo(User::class);
     }
 }
-

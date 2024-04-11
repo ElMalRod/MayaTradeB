@@ -45,4 +45,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(Message::class, 'recipient_id');
     }
+    
+    public static function getUsersByApprovalStatus()
+    {
+        return static::orderBy('approved', 'asc')->get();
+    }
 }

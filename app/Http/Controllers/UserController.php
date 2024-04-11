@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use App\Models\User; // Añade esta línea para importar el modelo User
+use App\Models\User; 
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 
@@ -66,11 +66,17 @@ class UserController extends Controller
     
         if (Auth::attempt($request->only('email', 'password'))) {
             $user = Auth::user();
+            if (!$user->approved) {
+                return response()->json(['message' => 'Your account is not approved yet.'], 401);
+            }
+
             $token = $user->createToken($request->device_name)->plainTextToken;
             return response()->json([
+                'id' => $user->id,
                 'token' => $token,
                 'name' => $user->name,
-                'role' => $user->role
+                'role' => $user->role,
+                'saldo' => $user->saldo
             ]);
         }
     
@@ -84,4 +90,29 @@ class UserController extends Controller
 
         return response()->json(['message' => 'User logged out successfully.']);
     }
+
+    public function getUsersByApprovalStatus()
+    {
+        $users = User::orderBy('approved', 'asc')->get();
+        return response()->json(['users' => $users]);
+    }
+
+    // Update the approval status of a user
+    public function updateApprovalStatus(Request $request, $id)
+    {
+        // Busca el usuario por su ID
+        $user = User::findOrFail($id);
+    
+        $validatedData = $request->validate([
+            'approved' => 'required|boolean',
+        ]);
+    
+        // Actualiza el estado de aprobación del usuario
+        $user->approved = $validatedData['approved'];
+        $user->save();
+        
+        return response()->json(['message' => 'User approval status updated successfully.', 'user' => $user]);
+    }
+    
+
 }

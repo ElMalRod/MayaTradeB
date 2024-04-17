@@ -114,5 +114,56 @@ class UserController extends Controller
         return response()->json(['message' => 'User approval status updated successfully.', 'user' => $user]);
     }
     
+    /**
+     * Get user's balance by their username.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\Response
+     */
+    public function getBalance(Request $request)
+    {
+        $request->validate([
+            'userName' => 'required|string|exists:users,name' // Validate to ensure userName exists in users table
+        ]);
+
+        $userName = $request->userName;
+        $user = User::where('name', $userName)->first();
+
+        if (!$user) {
+            return response()->json(['error' => 'Usuario no encontrado.'], 404);
+        }
+
+        return response()->json([
+            'userName' => $user->name,
+            'balance' => $user->saldo
+        ]);
+    }
+
+    public function withdrawFunds(Request $request)
+{
+    $request->validate([
+        'userName' => 'required|string|exists:users,name',
+        'amount' => 'required|numeric|min:1'
+    ]);
+
+    $userName = $request->userName;
+    $amount = $request->amount;
+    $user = User::where('name', $userName)->first();
+
+    if (!$user) {
+        return response()->json(['error' => 'Usuario no encontrado.'], 404);
+    }
+
+    if ($user->saldo < $amount) {
+        return response()->json(['error' => 'Fondos insuficientes.'], 400);
+    }
+
+    $user->saldo -= $amount;
+    $user->save();
+
+    return response()->json(['message' => 'Fondos retirados exitosamente.', 'balance' => $user->saldo]);
+}
+
+
 
 }

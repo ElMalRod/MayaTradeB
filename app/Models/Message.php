@@ -5,20 +5,29 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Product extends Model
+class Message extends Model
 {
+    use HasFactory;
+
     protected $fillable = [
-        'user_id', 'name', 'description', 'price',
+        'sender_id', 'recipient_id', 'content',
     ];
 
     // Relationships
-    public function user()
+
+    /**
+     * Get the sender of the message
+     */
+    public function sender()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class, 'sender_id');
     }
 
-    public function transactions()
+    /**
+     * Get the recipient of the message
+     */
+    public function recipient()
     {
-        return $this->hasMany(Transaction::class);
+        return $this->belongsTo(User::class, 'recipient_id');
     }
 }

@@ -5,6 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth; 
+use Illuminate\Support\Facades\Validator;
+use App\Models\User; 
+
 
 class ProductController extends Controller
 {
@@ -23,14 +26,13 @@ class ProductController extends Controller
             'available' => 'required|boolean'
         ]);
 
-        // Obtiene el nombre de usuario del request
+     
         $userName = $request->userName;
-
-        $imageName = $request->file('image')->getClientOriginalName(); // Obtiene el nombre original de la imagen
-        $imagePath = $request->file('image')->storeAs('images', $imageName, 'public'); // Guarda la imagen en la carpeta 'public/images'
+        $imageName = $request->file('image')->getClientOriginalName();
+        $imagePath = $request->file('image')->storeAs('images', $imageName, 'public'); 
 
         $product = new Product();
-        $product->userName = $userName; // Asigna el nombre de usuario al producto
+        $product->userName = $userName;
         $product->name = $request->name;
         $product->description = $request->description;
         $product->price = $request->price;
@@ -54,6 +56,63 @@ class ProductController extends Controller
 
         return response()->json(['products' => $products]);
     }
+
+    /**
+     * Display a listing of the resource.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function getUserProducts($userName)
+    {
+        $products = Product::where('userName', $userName)->get();
+
+        return response()->json(['products' => $products]);
+    }
+
+    /**
+     * Update the specified resource in storage.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function updateProduct(Request $request, $id)
+    {
+        // Busca el producto por su ID
+        $product = Product::findOrFail($id);
+
+        // Validar los datos de entrada
+        $validator = Validator::make($request->all(), [
+            'name' => 'string',
+            'description' => 'string',
+            'price' => 'numeric|min:0'
+        ]);
+
+        // Si la validación falla, retorna un mensaje de error
+        if ($validator->fails()) {
+            return response()->json(['error' => $validator->errors()], 400);
+        }
+
+        // Actualiza los campos solo si se proporcionan en la solicitud
+        if ($request->has('name')) {
+            $product->name = $request->name;
+        }
+        if ($request->has('description')) {
+            $product->description = $request->description;
+        }
+        if ($request->has('price')) {
+            $product->price = $request->price;
+        }
+
+        // Guarda los cambios en la base de datos
+        $product->save();
+
+        // Retorna una respuesta con el producto actualizado
+        return response()->json(['message' => 'Product updated successfully.', 'product' => $product]);
+    }
+
+
+
 
      /**
      * Reportar un producto.
@@ -153,4 +212,58 @@ class ProductController extends Controller
 
         return response()->json(['message' => 'Producto rechazado exitosamente.', 'product' => $product]);
     }
+
+    /**
+     * Buy a product.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function buyProduct(Request $request, $id)
+    {
+        $userName = $request->input('userName'); // Get userName from the request
+        $buyer = User::where('name', $userName)->first(); // Find the buyer by userName
+    
+        if (!$buyer) {
+            return response()->json(['error' => 'User not found.'], 404);
+        }
+    
+        $product = Product::findOrFail($id);
+    
+        if (!$product->available) {
+            return response()->json(['error' => 'Este producto ya fue comprado.'], 400);
+        }
+    
+        if (!$product->approved) {
+            return response()->json(['error' => 'Este producto no está aprobado para la venta.'], 400);
+        }
+    
+        if ($buyer->saldo < $product->price) {
+            return response()->json(['error' => 'Saldo insuficiente para completar la compra.'], 400);
+        }
+    
+        // Retrieve the seller's user record
+        $seller = User::where('name', $product->userName)->first();
+        if (!$seller) {
+            return response()->json(['error' => 'Vendedor no encontrado.'], 404);
+        }
+    
+        // Transaction operations
+        $buyer->saldo -= $product->price;  // Subtract the price from the buyer's balance
+        $seller->saldo += $product->price; // Add the price to the seller's balance
+    
+        $buyer->save();
+        $seller->save();
+    
+        $product->available = false;  // Mark the product as unavailable
+        $product->save();
+    
+        return response()->json([
+            'message' => 'Producto comprado exitosamente.',
+            'product' => $product,
+            'buyer' => $buyer,
+            'seller' => $seller
+        ]);
+    }
+    
 }

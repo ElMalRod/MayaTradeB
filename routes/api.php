@@ -6,6 +6,8 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\ServiceController;
+use Illuminate\Support\Facades\Storage;
+use App\Http\Controllers\MessageController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -22,6 +24,16 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('user/update', [UserController::class, 'update']);
     Route::post('logout', [UserController::class, 'logout']);
 });
+
+Route::get('storage/{filename}', function ($filename) {
+    $path = storage_path('app/public/' . $filename);
+
+    if (!Storage::disk('public')->exists($filename)) {
+        abort(404);
+    }
+
+    return response()->file($path);
+})->where('filename', '.*');
 
 Route::post('register', [UserController::class, 'register']);
 Route::post('login', [UserController::class, 'login']);
@@ -52,6 +64,21 @@ Route::put('/products/{id}/reject', [ProductController::class, 'rejectProduct'])
 Route::put('/services/{id}/approve', [ServiceController::class, 'approveService']);
 Route::put('/services/{id}/reject',  [ServiceController::class, 'rejectService']);
 
+// obtener productos de un usuario
+Route::get('/users/{userName}/products', [ProductController::class, 'getUserProducts']);
+// obtener servicios de un usuario
+Route::get('/users/{userName}/services', [ServiceController::class, 'getUserServices']);
 
+// modificar productos
+Route::put('products/update/{id}', [ProductController::class, 'updateProduct']);
+// modificar servicios
+Route::put('services/update/{id}', [ServiceController::class, 'updateService']);
 
+// chat
+Route::post('/send-message', [MessageController::class, 'sendMessage']);
+Route::get('/get-messages', [MessageController::class, 'getMessages']);Route::get('/messages/user', [MessageController::class, 'getAllUserMessages']);
+Route::get('/messages/user', [MessageController::class, 'getAllUserMessages']);
 
+Route::post('/products/{id}/buy', [ProductController::class, 'buyProduct']);
+Route::get('/users/balance', [UserController::class, 'getBalance']);
+Route::post('/users/withdraw', [UserController::class, 'withdrawFunds']);

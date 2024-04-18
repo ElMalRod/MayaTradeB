@@ -17,14 +17,15 @@ return new class extends Migration
             $table->string('name');
             $table->text('description');
             $table->decimal('price', 8, 2);
-            $table->boolean('active')->default(true); 
-            $table->boolean('approved')->default(false); 
+            $table->string('image_path')->nullable();
+            $table->boolean('active')->default(true);
+            $table->boolean('approved')->default(false);
             $table->boolean('reported')->default(false);
             $table->text('report_reason')->nullable();
             $table->timestamps();
         });
-        
     }
+
 
     /**
      * Reverse the migrations.

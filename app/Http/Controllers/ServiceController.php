@@ -6,6 +6,7 @@ use App\Models\Service;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Validator;
+use App\Models\User; 
 
 class ServiceController extends Controller
 {
@@ -28,17 +29,21 @@ class ServiceController extends Controller
             'name' => 'required|string',
             'description' => 'required|string',
             'price' => 'required|numeric|min:0',
+            'image' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048',  
             'active' => 'required|boolean',
             'approved' => 'required|boolean'
         ]);
-    
+
         $userName = $request->userName;
+        $imageName = $request->file('image')->getClientOriginalName();
+        $imagePath = $request->file('image')->storeAs('images', $imageName, 'public');
 
         $service = new Service();
         $service->userName = $userName;
         $service->name = $request->name;
         $service->description = $request->description;
         $service->price = $request->price;
+        $service->image_path = $imagePath;  
         $service->active = $request->active;
         $service->approved = $request->approved;
         $service->save();
@@ -238,6 +243,57 @@ public function rejectService($id)
         // Retorna una respuesta con el servicio actualizado
         return response()->json(['message' => 'Service updated successfully.', 'service' => $service]);
     }
+
+    /**
+ * Adquirir un servicio.
+ *
+ * @param  \Illuminate\Http\Request  $request
+ * @param  int  $id  El ID del servicio a adquirir
+ * @return \Illuminate\Http\Response
+ */
+public function acquireService(Request $request, $id)
+{
+    $userName = $request->input('userName'); // Obtiene el nombre de usuario del solicitante
+    $user = User::where('name', $userName)->first(); // Encuentra al usuario solicitante
+
+    if (!$user) {
+        return response()->json(['error' => 'Usuario no encontrado.'], 404);
+    }
+
+    $service = Service::findOrFail($id); // Encuentra el servicio por ID
+
+    // Verifica si el usuario es el mismo que ofrece el servicio
+    if ($service->userName == $userName) {
+        return response()->json(['error' => 'No puedes adquirir tu propio servicio.'], 403);
+    }
+
+    // Verifica si el usuario tiene saldo suficiente para adquirir el servicio
+    if ($user->saldo < $service->price) {
+        return response()->json(['error' => 'Saldo insuficiente para adquirir el servicio.'], 400);
+    }
+
+    // Encuentra al usuario que ofrece el servicio
+    $provider = User::where('name', $service->userName)->first();
+
+    // Realiza las operaciones de la transacción
+    $user->saldo -= $service->price; // Descuenta el saldo del usuario solicitante
+    $provider->saldo += $service->price; // Incrementa el saldo del usuario proveedor del servicio
+
+    $user->save();
+    $provider->save();
+
+    // Actualiza el estado del servicio a no disponible, si es necesario
+    // $service->active = false;
+    // $service->save();
+
+    return response()->json([
+        'message' => 'Servicio adquirido exitosamente.',
+        'service' => $service,
+        'user' => $user,
+        'provider' => $provider
+    ]);
+}
+
 
         
 }

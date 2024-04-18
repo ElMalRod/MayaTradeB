@@ -14,6 +14,7 @@ class Service extends Model
         'name', 
         'description', 
         'price',
+        'image_path',
         'reported', 
         'report_reason'
     ];
